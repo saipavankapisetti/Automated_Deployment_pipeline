@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+    
+    triggers {
+        pollSCM('* * * * *') 
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+
+                git branch: 'main', url: 'https://github.com/saipavankapisetti/interestcalculator.git'
+            }
+        }
+
+        stage('Nginx Installation') {
+            steps {
+                script {
+                    try {
+
+                        sh 'sudo apt update && sudo apt install nginx -y'
+
+                        sh 'sudo systemctl start nginx'
+
+                        sh 'sudo systemctl status nginx'
+                    } catch (Exception e) {
+                        currentBuild.result = 'FAILED'
+                        error "Failed to install and start Nginx: ${e.message}"
+                    }
+                }
+            }
+        }
+
+        stage('Move Index File') {
+            steps {
+
+                script {
+                    try {
+                        sh 'sudo mv index.html /var/www/html/index.nginx-debian.html'
+                        currentBuild.result = 'SUCCESS'
+                    } catch (Exception e) {
+                        echo "Failed to move index.html: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error "Failed to move index.html"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed!"
+        }
+    }
+}
